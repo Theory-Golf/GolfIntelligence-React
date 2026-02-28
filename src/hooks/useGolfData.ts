@@ -188,7 +188,7 @@ export function useGolfData(): UseGolfDataResult {
   // Calculate metrics from filtered shots
   const tiger5Metrics = useMemo(() => {
     return calculateTiger5Metrics(filteredShots);
-  }, [filteredShots]);
+  }, [filteredShots, benchmark]);
 
   // Get round summaries from filtered shots
   const roundSummaries = useMemo(() => {
