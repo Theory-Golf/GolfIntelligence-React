@@ -4,9 +4,9 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Papa from 'papaparse';
-import type { RawShot, ProcessedShot, Tiger5Metrics, RoundSummary, FilterState, FilterOptions, DrivingMetrics, DrivingAnalysis, ApproachMetrics, ApproachDistanceBucket, PuttingMetrics, LagPuttingMetrics, ScoringMetrics, MentalMetrics, BirdieAndBogeyMetrics } from '../types/golf';
+import type { RawShot, ProcessedShot, Tiger5Metrics, RoundSummary, FilterState, FilterOptions, DrivingMetrics, DrivingAnalysis, ApproachMetrics, ApproachDistanceBucket, ApproachHeatMapData, PuttingMetrics, LagPuttingMetrics, ScoringMetrics, MentalMetrics, BirdieAndBogeyMetrics, ShortGameMetrics, ShortGameHeatMapData } from '../types/golf';
 import type { BenchmarkType } from '../data/benchmarks';
-import { processShots, calculateTiger5Metrics, getRoundSummaries, calculateDrivingMetrics, calculateDrivingAnalysis, calculateApproachMetrics, calculateApproachByDistance, calculatePuttingMetrics, calculateLagPuttingMetrics, calculateScoringMetrics, calculateMentalMetrics, calculateBirdieAndBogeyMetrics } from '../utils/calculations';
+import { processShots, calculateTiger5Metrics, getRoundSummaries, calculateDrivingMetrics, calculateDrivingAnalysis, calculateApproachMetrics, calculateApproachByDistance, calculateApproachFromRough, calculateApproachHeatMapData, calculatePuttingMetrics, calculateLagPuttingMetrics, calculateScoringMetrics, calculateMentalMetrics, calculateBirdieAndBogeyMetrics, calculateShortGameMetrics, calculateShortGameHeatMapData } from '../utils/calculations';
 
 // Google Sheet CSV URL - published to web
 const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ6xTTDWTSzaRvoiACi2PT-l7uqvwcZwdlIZsCGunz-8t-227TBihATnDfUoi5VzDqhOIGcAbJViw9O/pub?output=csv';
@@ -22,9 +22,13 @@ interface UseGolfDataResult {
   drivingAnalysis: DrivingAnalysis;
   approachMetrics: ApproachMetrics;
   approachByDistance: ApproachDistanceBucket[];
+  approachFromRough: ApproachDistanceBucket[];
+  approachHeatMapData: ApproachHeatMapData;
   puttingMetrics: PuttingMetrics;
   lagPuttingMetrics: LagPuttingMetrics;
   mentalMetrics: MentalMetrics;
+  shortGameMetrics: ShortGameMetrics;
+  shortGameHeatMapData: ShortGameHeatMapData;
   roundSummaries: RoundSummary[];
   filterOptions: FilterOptions;
   cascadingFilterOptions: FilterOptions;
@@ -277,6 +281,21 @@ export function useGolfData(): UseGolfDataResult {
     return calculateApproachByDistance(filteredShots);
   }, [filteredShots]);
 
+  // Calculate approach from rough from filtered shots
+  const approachFromRough = useMemo(() => {
+    return calculateApproachFromRough(filteredShots);
+  }, [filteredShots]);
+
+  // Get unique rounds count for SG per Round calculation
+  const uniqueRounds = useMemo(() => {
+    return [...new Set(filteredShots.map(s => s['Round ID']))].length;
+  }, [filteredShots]);
+
+  // Calculate approach heat map data
+  const approachHeatMapData = useMemo(() => {
+    return calculateApproachHeatMapData(filteredShots, uniqueRounds);
+  }, [filteredShots, uniqueRounds]);
+
   // Calculate putting metrics from filtered shots
   const puttingMetrics = useMemo(() => {
     return calculatePuttingMetrics(filteredShots);
@@ -291,6 +310,16 @@ export function useGolfData(): UseGolfDataResult {
   const mentalMetrics = useMemo(() => {
     return calculateMentalMetrics(filteredShots, benchmark);
   }, [filteredShots, benchmark]);
+
+  // Calculate short game metrics from filtered shots
+  const shortGameMetrics = useMemo(() => {
+    return calculateShortGameMetrics(filteredShots);
+  }, [filteredShots]);
+
+  // Calculate short game heat map data
+  const shortGameHeatMapData = useMemo(() => {
+    return calculateShortGameHeatMapData(filteredShots, uniqueRounds);
+  }, [filteredShots, uniqueRounds]);
 
   // Get round summaries from filtered shots
   const roundSummaries = useMemo(() => {
@@ -313,9 +342,13 @@ export function useGolfData(): UseGolfDataResult {
     drivingAnalysis,
     approachMetrics,
     approachByDistance,
+    approachFromRough,
+    approachHeatMapData,
     puttingMetrics,
     lagPuttingMetrics,
     mentalMetrics,
+    shortGameMetrics,
+    shortGameHeatMapData,
     roundSummaries,
     filterOptions,
     cascadingFilterOptions,

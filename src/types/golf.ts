@@ -417,6 +417,49 @@ export interface ApproachMetrics {
   greenHitPctUnder150: number;
 }
 
+// Short Game metrics for the Short Game Tab
+export interface ShortGameMetrics {
+  // Total short game shots
+  totalShortGameShots: number;
+  // Strokes Gained - Short Game
+  shortGameSG: number;
+  avgShortGameSG: number;
+  // % of short game shots with SG > 0
+  positiveSGPct: number;
+  positiveSGCount: number;
+  // <= 8ft from Fairway - percentage of short game shots from Fairway that end on green within 8 feet
+  within8FeetFairwayPct: number;
+  within8FeetFairwayCount: number;
+  totalShortGameFairway: number;
+  // <= 8ft from Rough - percentage of short game shots from Rough that end on green within 8 feet
+  within8FeetRoughPct: number;
+  within8FeetRoughCount: number;
+  totalShortGameRough: number;
+  // <= 8ft from Sand - percentage of short game shots from Sand that end on green within 8 feet
+  within8FeetSandPct: number;
+  within8FeetSandCount: number;
+  totalShortGameSand: number;
+}
+
+// Heat map cell for Short Game by Lie and Distance
+export interface ShortGameHeatMapCell {
+  lie: string;                    // Fairway, Rough, Sand, Recovery
+  distanceBucket: string;         // Around the Green, Short Shots, Finesse Wedges
+  minDistance: number;
+  maxDistance: number;
+  totalShots: number;
+  strokesGained: number;
+  sgPerRound: number;             // strokesGained / totalRounds
+}
+
+// Heat map data for Short Game tab
+export interface ShortGameHeatMapData {
+  cells: ShortGameHeatMapCell[];
+  distanceBuckets: string[];     // X-axis labels
+  lies: string[];                // Y-axis labels (Fairway, Rough, Sand, Recovery)
+  totalRounds: number;           // For SG per Round calculation
+}
+
 // Putting by distance bucket metrics
 export interface PuttingDistanceBucket {
   label: string;           // e.g., "0-4", "5-8"

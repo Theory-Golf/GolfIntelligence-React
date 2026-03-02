@@ -3,7 +3,7 @@
  * Based on your shot classification rules
  */
 
-import type { RawShot, ProcessedShot, ShotType, ShotCategory, Tiger5Metrics, RoundSummary, Tiger5Fail, HoleScore, RootCauseMetrics, Tiger5FailDetail, Tiger5FailDetails, RootCauseByFailTypeList, RootCauseByFailType, Tiger5TrendDataPoint, SGSeparator, SGShotCategory, SGRoundData, DrivingMetrics, DriveEndingLocationData, DriveDistanceRange, DrivingAnalysis, DriveEndingLocationType, ProblemDriveMetrics, ApproachMetrics, ApproachDistanceBucket, PuttingMetrics, PuttingDistanceBucket, LagPuttingMetrics, LagDistanceDistribution, ScoringMetrics, ParScoringMetrics, HoleOutcomeData, HoleOutcome, MentalMetrics, BogeyRateByPar, BirdieOpportunityMetrics, ScoringRootCause, BirdieAndBogeyMetrics } from '../types/golf';
+import type { RawShot, ProcessedShot, ShotType, ShotCategory, Tiger5Metrics, RoundSummary, Tiger5Fail, HoleScore, RootCauseMetrics, Tiger5FailDetail, Tiger5FailDetails, RootCauseByFailTypeList, RootCauseByFailType, Tiger5TrendDataPoint, SGSeparator, SGShotCategory, SGRoundData, DrivingMetrics, DriveEndingLocationData, DriveDistanceRange, DrivingAnalysis, DriveEndingLocationType, ProblemDriveMetrics, ApproachMetrics, ApproachDistanceBucket, ApproachHeatMapCell, ApproachHeatMapData, PuttingMetrics, PuttingDistanceBucket, LagPuttingMetrics, LagDistanceDistribution, ScoringMetrics, ParScoringMetrics, HoleOutcomeData, HoleOutcome, MentalMetrics, BogeyRateByPar, BirdieOpportunityMetrics, ScoringRootCause, BirdieAndBogeyMetrics, ShortGameMetrics, ShortGameHeatMapCell, ShortGameHeatMapData } from '../types/golf';
 import type { BenchmarkType } from '../data/benchmarks';
 import { calculateStrokesGained } from '../data/benchmarks';
 
@@ -1906,6 +1906,142 @@ export function calculateApproachByDistance(shots: ProcessedShot[]): ApproachDis
 }
 
 /**
+ * Calculate Approach from Rough metrics
+ * - Filter to approach shots from Rough only
+ * - Four buckets: 51-100, 101-150, 151-200, 201-225 yards
+ * - Calculate SG, Green %, and Proximity for each bucket
+ */
+export function calculateApproachFromRough(shots: ProcessedShot[]): ApproachDistanceBucket[] {
+  // Filter to approach shots from Rough only
+  const roughShots = shots.filter(s => 
+    s.shotType === 'Approach' && 
+    s['Starting Lie'] === 'Rough'
+  );
+  
+  // Define four buckets (same as approach by distance)
+  const buckets = [
+    { label: 'Distance Wedges', description: '51-100 yards', minDistance: 51, maxDistance: 100 },
+    { label: 'Short Approach', description: '101-150 yards', minDistance: 101, maxDistance: 150 },
+    { label: 'Medium Approach', description: '151-200 yards', minDistance: 151, maxDistance: 200 },
+    { label: 'Long Approach', description: '201-225 yards', minDistance: 201, maxDistance: 225 },
+  ];
+  
+  // Calculate metrics for each bucket
+  const results: ApproachDistanceBucket[] = buckets.map(bucket => {
+    const bucketShots = roughShots.filter(s => 
+      s['Starting Distance'] >= bucket.minDistance && 
+      s['Starting Distance'] <= bucket.maxDistance
+    );
+    
+    const totalShots = bucketShots.length;
+    
+    // Calculate SG
+    const strokesGained = totalShots > 0 
+      ? bucketShots.reduce((sum, s) => sum + s.calculatedStrokesGained, 0)
+      : 0;
+    const avgStrokesGained = totalShots > 0 ? strokesGained / totalShots : 0;
+    
+    // Calculate Green Hit %
+    const greenHits = bucketShots.filter(s => s['Ending Lie'] === 'Green').length;
+    const greenHitPct = totalShots > 0 ? (greenHits / totalShots) * 100 : 0;
+    
+    // Calculate Proximity (same logic as before)
+    const proximity = totalShots > 0 
+      ? bucketShots.reduce((sum, s) => {
+          const endingDist = s['Ending Distance'];
+          const distInFeet = s['Ending Lie'] === 'Green' ? endingDist : endingDist * 3;
+          return sum + distInFeet;
+        }, 0) / totalShots
+      : 0;
+    
+    // Proximity on green only
+    const greenShots = bucketShots.filter(s => s['Ending Lie'] === 'Green');
+    const proximityOnGreen = greenShots.length > 0 
+      ? greenShots.reduce((sum, s) => sum + s['Ending Distance'], 0) / greenShots.length
+      : 0;
+    
+    return {
+      label: bucket.label,
+      description: bucket.description,
+      minDistance: bucket.minDistance,
+      maxDistance: bucket.maxDistance,
+      totalShots,
+      strokesGained,
+      avgStrokesGained,
+      greenHits,
+      greenHitPct,
+      proximity,
+      proximityOnGreen,
+    };
+  });
+  
+  // Filter out buckets with no shots
+  return results.filter(b => b.totalShots > 0);
+}
+
+/**
+ * Calculate Approach Heat Map data
+ * - X-axis: Distance buckets (51-100, 101-150, 151-200, 201-225 yards)
+ * - Y-axis: Starting Lie (Tee, Fairway, Rough, Sand, Recovery)
+ * - Cell values: Total shots and SG metrics
+ * 
+ * @param shots - Processed shots
+ * @param totalRounds - Total number of rounds in the filter (for SG per Round calculation)
+ */
+export function calculateApproachHeatMapData(shots: ProcessedShot[], totalRounds: number): ApproachHeatMapData {
+  // Define the 5 starting lies for Y-axis
+  const lies = ['Tee', 'Fairway', 'Rough', 'Sand', 'Recovery'];
+  
+  // Define distance buckets for X-axis
+  const distanceBuckets = [
+    { label: 'Distance Wedges', minDistance: 51, maxDistance: 100 },
+    { label: 'Short Approach', minDistance: 101, maxDistance: 150 },
+    { label: 'Medium Approach', minDistance: 151, maxDistance: 200 },
+    { label: 'Long Approach', minDistance: 201, maxDistance: 225 },
+  ];
+  
+  // Filter to approach shots only
+  const approachShots = shots.filter(s => s.shotType === 'Approach');
+  
+  // Build cells for each lie × distance bucket combination
+  const cells: ApproachHeatMapCell[] = [];
+  
+  lies.forEach(lie => {
+    distanceBuckets.forEach(bucket => {
+      // Filter shots for this lie and distance bucket
+      const cellShots = approachShots.filter(s => 
+        s['Starting Lie'] === lie &&
+        s['Starting Distance'] >= bucket.minDistance &&
+        s['Starting Distance'] <= bucket.maxDistance
+      );
+      
+      const totalShots = cellShots.length;
+      const strokesGained = totalShots > 0 
+        ? cellShots.reduce((sum, s) => sum + s.calculatedStrokesGained, 0)
+        : 0;
+      const sgPerRound = totalRounds > 0 ? strokesGained / totalRounds : 0;
+      
+      cells.push({
+        lie,
+        distanceBucket: bucket.label,
+        minDistance: bucket.minDistance,
+        maxDistance: bucket.maxDistance,
+        totalShots,
+        strokesGained,
+        sgPerRound,
+      });
+    });
+  });
+  
+  return {
+    cells,
+    distanceBuckets: distanceBuckets.map(b => b.label),
+    lies,
+    totalRounds,
+  };
+}
+
+/**
  * Calculate Putting metrics from processed shots
  * - Total SG Putting: Total SG for all putts
  * - Make % 0-4 ft: % of putts made from 0-4 feet (made = ending distance is 0)
@@ -2376,7 +2512,7 @@ export function calculateScoringMetrics(shots: ProcessedShot[]): ScoringMetrics 
  * All calculations are round-independent: each round is treated separately
  * Previous hole outcomes from Round N do NOT carry over to Round N+1
  */
-export function calculateMentalMetrics(shots: ProcessedShot[], benchmark: BenchmarkType): MentalMetrics {
+export function calculateMentalMetrics(shots: ProcessedShot[], _benchmark: BenchmarkType): MentalMetrics {
   // Get hole scores
   const holeScores = getHoleScores(shots);
   
@@ -2429,7 +2565,6 @@ export function calculateMentalMetrics(shots: ProcessedShot[], benchmark: Benchm
   
   // First, identify Tiger 5 fail holes
   shots.forEach(shot => {
-    const holeKey = `${shot['Round ID']}-${shot.Hole}`;
     const hole = holeScores.find(h => h.roundId === shot['Round ID'] && h.hole === shot.Hole);
     if (!hole) return;
     
@@ -2614,7 +2749,7 @@ function isTiger5FailHole(hole: HoleScore, shots: ProcessedShot[]): boolean {
 /**
  * Calculate bogey rate (holes where score = par + 1) overall and by par
  */
-export function calculateBogeyRates(shots: ProcessedShot[], holeScores: HoleScore[]): BogeyRateByPar[] {
+export function calculateBogeyRates(_shots: ProcessedShot[], holeScores: HoleScore[]): BogeyRateByPar[] {
   const bogeyRates: BogeyRateByPar[] = [
     { par: 0, label: 'Overall', totalHoles: 0, bogeyCount: 0, bogeyRate: 0 },
     { par: 3, label: 'Par 3', totalHoles: 0, bogeyCount: 0, bogeyRate: 0 },
@@ -2650,7 +2785,7 @@ export function calculateBogeyRates(shots: ProcessedShot[], holeScores: HoleScor
  * Birdie Opportunity: GIR with resulting putt <= 20 feet
  * Conversion: Birdies made / Opportunities
  */
-export function calculateBirdieOpportunities(shots: ProcessedShot[], holeScores: HoleScore[]): BirdieOpportunityMetrics {
+export function calculateBirdieOpportunities(shots: ProcessedShot[], _holeScores: HoleScore[]): BirdieOpportunityMetrics {
   const result: BirdieOpportunityMetrics = {
     opportunities: 0,
     conversions: 0,
@@ -2675,7 +2810,6 @@ export function calculateBirdieOpportunities(shots: ProcessedShot[], holeScores:
     
     // Check if this is a GIR (Green in Regulation)
     // GIR means: on a par 3, you hit the green in 1; par 4 in 2; par 5 in 3
-    const girShotNum = par; // Shot number that would result in par-1 if on green
     
     // Find the shot that landed on green
     const girShot = holeShots.find(s => s['Starting Lie'] === 'Green');
@@ -2962,5 +3096,144 @@ export function calculateBirdieAndBogeyMetrics(shots: ProcessedShot[]): BirdieAn
     doubleBogeyPlusRootCause,
     totalBogeys,
     totalDoubleBogeyPlus,
+  };
+}
+
+/**
+ * Calculate Short Game metrics
+ * - Total SG Short Game
+ * - <= 8ft from Fairway - % of short game shots from Fairway that end on green within 8 feet
+ * - <= 8ft from Rough - % of short game shots from Rough that end on green within 8 feet
+ * - <= 8ft from Sand - % of short game shots from Sand that end on green within 8 feet
+ */
+export function calculateShortGameMetrics(shots: ProcessedShot[]): ShortGameMetrics {
+  // Filter to only short game shots
+  const shortGameShots = shots.filter(s => s.shotType === 'Short Game');
+  
+  if (shortGameShots.length === 0) {
+    return {
+      totalShortGameShots: 0,
+      shortGameSG: 0,
+      avgShortGameSG: 0,
+      positiveSGPct: 0,
+      positiveSGCount: 0,
+      within8FeetFairwayPct: 0,
+      within8FeetFairwayCount: 0,
+      totalShortGameFairway: 0,
+      within8FeetRoughPct: 0,
+      within8FeetRoughCount: 0,
+      totalShortGameRough: 0,
+      within8FeetSandPct: 0,
+      within8FeetSandCount: 0,
+      totalShortGameSand: 0,
+    };
+  }
+  
+  // Total SG - Short Game
+  const shortGameSG = shortGameShots.reduce((sum, s) => sum + s.calculatedStrokesGained, 0);
+  const avgShortGameSG = shortGameSG / shortGameShots.length;
+  
+  // % of short game shots with SG > 0
+  const positiveSGCount = shortGameShots.filter(s => s.calculatedStrokesGained > 0).length;
+  const positiveSGPct = (positiveSGCount / shortGameShots.length) * 100;
+  
+  // <= 8ft from Fairway - short game shots from Fairway that end on green within 8 feet
+  const shortGameFairway = shortGameShots.filter(s => s['Starting Lie'] === 'Fairway');
+  const totalShortGameFairway = shortGameFairway.length;
+  const within8FeetFairwayCount = shortGameFairway.filter(s => 
+    s['Ending Lie'] === 'Green' && s['Ending Distance'] <= 8
+  ).length;
+  const within8FeetFairwayPct = totalShortGameFairway > 0 
+    ? (within8FeetFairwayCount / totalShortGameFairway) * 100 
+    : 0;
+  
+  // <= 8ft from Rough - short game shots from Rough that end on green within 8 feet
+  const shortGameRough = shortGameShots.filter(s => s['Starting Lie'] === 'Rough');
+  const totalShortGameRough = shortGameRough.length;
+  const within8FeetRoughCount = shortGameRough.filter(s => 
+    s['Ending Lie'] === 'Green' && s['Ending Distance'] <= 8
+  ).length;
+  const within8FeetRoughPct = totalShortGameRough > 0 
+    ? (within8FeetRoughCount / totalShortGameRough) * 100 
+    : 0;
+  
+  // <= 8ft from Sand - short game shots from Sand that end on green within 8 feet
+  const shortGameSand = shortGameShots.filter(s => s['Starting Lie'] === 'Sand');
+  const totalShortGameSand = shortGameSand.length;
+  const within8FeetSandCount = shortGameSand.filter(s => 
+    s['Ending Lie'] === 'Green' && s['Ending Distance'] <= 8
+  ).length;
+  const within8FeetSandPct = totalShortGameSand > 0 
+    ? (within8FeetSandCount / totalShortGameSand) * 100 
+    : 0;
+  
+  return {
+    totalShortGameShots: shortGameShots.length,
+    shortGameSG,
+    avgShortGameSG,
+    positiveSGPct,
+    positiveSGCount,
+    within8FeetFairwayPct,
+    within8FeetFairwayCount,
+    totalShortGameFairway,
+    within8FeetRoughPct,
+    within8FeetRoughCount,
+    totalShortGameRough,
+    within8FeetSandPct,
+    within8FeetSandCount,
+    totalShortGameSand,
+  };
+}
+
+/**
+ * Calculate Short Game Heat Map Data
+ * - Y-axis: Starting Lie (Fairway, Rough, Sand, Recovery)
+ * - X-axis: Distance buckets (0-15: Around the Green, 16-35: Short Shots, 36-50: Finesse Wedges)
+ * - Cell values: Total shots and SG metrics
+ */
+export function calculateShortGameHeatMapData(shots: ProcessedShot[], totalRounds: number): ShortGameHeatMapData {
+  const lies = ['Fairway', 'Rough', 'Sand', 'Recovery'];
+  
+  const distanceBuckets = [
+    { label: 'Around the Green', minDistance: 0, maxDistance: 15 },
+    { label: 'Short Shots', minDistance: 16, maxDistance: 35 },
+    { label: 'Finesse Wedges', minDistance: 36, maxDistance: 50 },
+  ];
+  
+  const shortGameShots = shots.filter(s => s.shotType === 'Short Game');
+  
+  const cells: ShortGameHeatMapCell[] = [];
+  
+  lies.forEach(lie => {
+    distanceBuckets.forEach(bucket => {
+      const cellShots = shortGameShots.filter(s => 
+        s['Starting Lie'] === lie &&
+        s['Starting Distance'] >= bucket.minDistance &&
+        s['Starting Distance'] <= bucket.maxDistance
+      );
+      
+      const totalShots = cellShots.length;
+      const strokesGained = totalShots > 0 
+        ? cellShots.reduce((sum, s) => sum + s.calculatedStrokesGained, 0)
+        : 0;
+      const sgPerRound = totalRounds > 0 ? strokesGained / totalRounds : 0;
+      
+      cells.push({
+        lie,
+        distanceBucket: bucket.label,
+        minDistance: bucket.minDistance,
+        maxDistance: bucket.maxDistance,
+        totalShots,
+        strokesGained,
+        sgPerRound,
+      });
+    });
+  });
+  
+  return {
+    cells,
+    distanceBuckets: distanceBuckets.map(b => b.label),
+    lies,
+    totalRounds,
   };
 }
