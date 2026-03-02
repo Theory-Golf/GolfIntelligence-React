@@ -362,6 +362,25 @@ export interface ApproachDistanceBucket {
   proximityOnGreen: number;
 }
 
+// Approach heat map cell data
+export interface ApproachHeatMapCell {
+  lie: string;                    // Tee, Fairway, Rough, Sand, Recovery
+  distanceBucket: string;          // Distance bucket label
+  minDistance: number;
+  maxDistance: number;
+  totalShots: number;
+  strokesGained: number;
+  sgPerRound: number;             // strokesGained / totalRounds
+}
+
+// Approach heat map data structure
+export interface ApproachHeatMapData {
+  cells: ApproachHeatMapCell[];
+  distanceBuckets: string[];       // X-axis labels
+  lies: string[];                 // Y-axis labels (Tee, Fairway, Rough, Sand, Recovery)
+  totalRounds: number;             // For SG per Round calculation
+}
+
 // Approach metrics for the Approach Tab
 export interface ApproachMetrics {
   // Total approach shots
