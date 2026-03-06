@@ -1,273 +1,133 @@
-# PlayerPath Tab - Performance Drivers Analysis
+# PlayerPath Tab Redesign Plan
 
 ## Overview
+Completely redesign the PlayerPath tab to identify Performance Drivers using a structured framework that measures specific, measurable aspects of a player's game with statistically significant and repeatable impact on strokes gained outcomes.
 
-The PlayerPath Tab is designed to algorithmically identify and present the **top 5 Performance Drivers** that are negatively impacting a player's performance. Each driver is presented as a hybrid card combining analytics data with dynamic narrative explanations.
+## Performance Driver Categories
 
-## Understanding Performance Drivers
+### 1. Driving (D1-D5)
+- **D1 — Tee Shot Penalty Rate**: Flag when tee shot penalties (startLie='Tee' AND penalty=true) exceed 5% (moderate) or 10% (severe)
+- **D2 — Distance Deficiency**: Flag when >50% of fairway tee shots produce negative SG
+- **D3 — Severe Misses**: Flag when tee shots ending in 'Recovery' exceed 5% of total tee shots
+- **D4 — Rough Penalty on Long Second Shots**: Flag when FW hit rate <50% AND avg second shot distance from rough >150y. Moderate at 150-175y, high above 175y
+- **D5 — Driver Value Gap**: Compare SG on tee shots when hitting driver vs non-driver
 
-### What Are Performance Drivers?
+### 2. Approach (A1-A4)
+- **A1 — GIR Rate by Distance Band**:
+  - 50-100y: <90% flag
+  - 100-150y: <80% flag
+  - 150-200y: <70% flag
+  - 200y+: <50% flag
 
-Performance Drivers are specific aspects of a player's game that are causing negative strokes gained, increasing scores, or contributing to Tiger 5 fails. Unlike the existing tabs that show overall metrics, Performance Drivers drill down to identify the **specific issues** within each game segment.
+- **A2 — Proximity Failure in Scoring Zones**:
+  - 50-100y: <15 feet target, <40% flag
+  - 100-150y: <20 feet target, <30% flag
+  - 150-200y: <30 feet target, <20% flag
 
-### The 6 Game Segments
+- **A3 — Lie-Based Performance Gap**:
+  - 50-100y: >0.10 SG worse from rough than fairway
+  - 100-150y: >0.15 SG gap
+  - 150-200y: >0.20 SG gap
+  - 200y+: >0.25 SG gap
 
-Each driver belongs to one of these segments (aligning with existing dashboard structure):
+- **A4 — Distance Band Black Hole**: Flag when a single distance band accounts for >40% of total approach SG losses
 
-1. **Driving** - All drive-related metrics
-   - Sub-categories: Fairway Hits, Penalties (OB + Standard), OB only, Sand/Recovery
+### 3. Putting (L1-L3, M1-M2)
+Lag Putting:
+- **L1 — Lag Proximity Rate**: % of first putts >10ft finishing >5ft from hole. <10% strong, 10-20% moderate, 20%+ significant
+- **L2 — Speed Dispersion Band**: Range from max long to max short putt. 0-6ft tight, 6-10ft moderate, 10+ft severe
+- **L3 — Centering Rate**: Long/short split. 45/55-55/45 well centered, 60/40-65/35 mild, 65/35-75/25 significant, 75/25+ severe
 
-2. **Approach** - Approach shot metrics by distance
-   - Sub-categories: Distance Wedges (51-100y), Short Approach (101-150y), Medium Approach (151-200y), Long Approach (201-225y)
+Makeable Putts (<20ft):
+- **M1 — SG by Distance Bucket** (min 10 putts):
+  - 0-4ft: <-0.10 SG/putt
+  - 5-8ft: <-0.15 SG/putt
+  - 9-12ft: <-0.12 SG/putt
+  - 13-20ft: <-0.10 SG/putt
+- **M2 — Primary Loss Bucket**: bucket with largest negative total SG
 
-3. **Short Game** - Short game metrics by lie
-   - Sub-categories: From Fairway, From Rough, From Sand
+### 4. Short Game (S1-S3)
+- **S1 — Proximity Rate Inside 8 Feet by Lie**:
+  - Fairway: <70% flag
+  - Rough: <60% flag
+  - Sand: <50% flag
 
-4. **Putting** - Putting metrics by distance
-   - Sub-categories: Makeable Putts (0-12ft), Lag Putts (13+ft)
+- **S2 — Proximity Rate Inside 8 Feet by Distance Band**:
+  - 0-20 yards: <70% flag
+  - 20-40 yards: <60% flag
+  - 40-60 yards: <50% flag
 
-5. **Mental** - Mental game metrics
-   - Sub-categories: Bounce Back, Drop Off, Gas Pedal, Bogey Train, Drive After T5 Fail
-
-6. **Scoring** - Scoring pattern metrics
-   - Sub-categories: Bogey Rate, Double Bogey+ Rate, Birdie Conversion
-
----
-
-## Algorithm: Identifying Top 5 Performance Drivers
-
-### Scoring Formula
-
-Each potential driver is scored using a weighted combination:
-
-```
-Driver Score = (60% × SG Impact Factor) + (40% × Tiger 5 Root Cause Factor)
-```
-
-Where:
-
-**SG Impact Factor** = Total negative strokes gained for this driver / Total rounds
-
-**Tiger 5 Root Cause Factor** = Number of Tiger 5 fails where this driver was the root cause
-
-### Priority Rules
-
-1. First, identify all candidate drivers from the 6 segments and their sub-categories
-2. Calculate the Driver Score for each candidate
-3. Sort by Driver Score (most negative = highest priority)
-4. Select top 5 drivers
-5. If fewer than 5 drivers have negative SG, fill remaining spots with lowest positive SG drivers
-
-### Candidate Driver Definitions
-
-| Segment | Sub-Category | Metric Used | Tiger 5 Root Cause Category |
-|---------|--------------|--------------|------------------------------|
-| Driving | Fairway | Fairway % below benchmark | driving |
-| Driving | Penalties | Penalty count × weighted SG | penalties |
-| Driving | OB Only | OB count × weighted SG | penalties |
-| Driving | Sand/Recovery | Obstruction count × SG | driving |
-| Approach | Distance Wedges | SG for 51-100y | approach |
-| Approach | Short Approach | SG for 101-150y | approach |
-| Approach | Medium Approach | SG for 151-200y | approach |
-| Approach | Long Approach | SG for 201-225y | approach |
-| Short Game | From Fairway | SG from fairway lie | shortGame |
-| Short Game | From Rough | SG from rough lie | shortGame |
-| Short Game | From Sand | SG from sand lie | shortGame |
-| Putting | Makeable Putts | SG for 0-12ft putts | makeablePutts |
-| Putting | Lag Putts | SG for 13+ft putts | lagPutts |
-| Mental | Bounce Back | Bounce Back % | (scoring pattern) |
-| Mental | Drop Off | Drop Off % | (scoring pattern) |
-| Scoring | Bogey Rate | Bogey rate vs benchmark | (scoring pattern) |
-| Scoring | Double Bogey+ | Double Bogey+ rate | (scoring pattern) |
-
----
-
-## Rating Thresholds
-
-Each driver is rated based on **SG per Round** impact:
-
-| Rating | SG per Round | Description |
-|--------|--------------|-------------|
-| **Critical** | ≤ -2.0 | Major scoring drain requiring immediate attention |
-| **Significant** | ≤ -1.0 | Notable impact but less urgent |
-| **Moderate** | > -1.0 | Minor issues worth monitoring |
-
----
-
-## Performance Driver Card Structure
-
-Each card contains:
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  [Segment Icon]  [Segment Name]                         │
-│                                                         │
-│  [Metric Name]                                          │
-│  ─────────────────                                      │
-│                                                         │
-│  "Dynamic narrative based on severity and values"       │
-│                                                         │
-│  ┌─────────────────────────────────────────────────┐   │
-│  │  SG/rd: -1.35      │  Tiger 5 Root Causes: 4    │   │
-│  └─────────────────────────────────────────────────┘   │
-│                                                         │
-│  [CRITICAL / SIGNIFICANT / MODERATE]                   │
-└─────────────────────────────────────────────────────────┘
-```
-
-### Card Fields
-
-1. **Segment** - The game segment (Driving, Approach, Short Game, Putting, Mental, Scoring)
-2. **Metric Name** - Specific metric causing the issue (e.g., "OB Penalties", "100-150y Approach")
-3. **Narrative** - Dynamic text explaining the issue in context
-4. **SG per Round** - Strokes gained lost per round from this driver
-5. **Tiger 5 Root Causes** - Count of Tiger 5 fails where this was the root cause
-6. **Rating** - Critical / Significant / Moderate
-
----
-
-## Narrative Generation Rules
-
-Narratives are generated dynamically based on the rating and specific metric values:
-
-### Critical Narratives (≤ -2.0 SG/rd)
-
-- "This is **severely impacting** your scoring. You're losing **X strokes per round** on [metric]. This was the root cause of **X Tiger 5 fails** - addressing this should be your top priority."
-
-### Significant Narratives (≤ -1.0 SG/rd)
-
-- "This is **notably affecting** your performance. You're dropping **X strokes per round** on [metric], contributing to **X Tiger 5 fails**. Focused practice here could yield meaningful improvement."
-
-### Moderate Narratives (> -1.0 SG/rd)
-
-- "This is a **minor concern** worth monitoring. You're losing approximately **X strokes per round** on [metric]. Keep watch during practice."
-
-### Metric-Specific Context
-
-Additional context is added based on the specific driver:
-
-| Driver | Context Added |
-|--------|---------------|
-| Fairway % | "You're hitting X% of fairways (benchmark: Y%)" |
-| OB Penalties | "X out of Y drives went OB, costing you approximately Z strokes" |
-| Approach SG | "Your proximity to the hole averages X feet vs Y feet benchmark" |
-| Short Game SG | "You're missing the green X% of the time from this lie" |
-| Makeable Putts | "You're making X% of putts in this range (benchmark: Y%)" |
-| Lag Putts | "Your average leave distance is X feet" |
-
----
-
-## Data Requirements
-
-### Types to Add (src/types/golf.ts)
-
-```typescript
-// Performance Driver severity rating
-export type PerformanceDriverRating = 'Critical' | 'Significant' | 'Moderate';
-
-// Single Performance Driver
-export interface PerformanceDriver {
-  id: string;
-  segment: 'Driving' | 'Approach' | 'Short Game' | 'Putting' | 'Mental' | 'Scoring';
-  subCategory: string;  // e.g., "OB Penalties", "100-150y Approach"
-  metricName: string;   // Display name for the metric
-  narrative: string;    // Dynamic narrative
-  
-  // Analytics
-  sgPerRound: number;        // SG impact per round
-  totalStrokesLost: number; // Total negative SG
-  tiger5RootCauses: number; // Count of T5 fails as root cause
-  occurrenceCount: number;   // How many times this occurred
-  
-  // Rating
-  rating: PerformanceDriverRating;
-  
-  // For potential drill-down
-  benchmark?: number;
-  playerValue?: number;
-}
-
-// Performance Drivers result
-export interface PerformanceDriversResult {
-  drivers: PerformanceDriver[];
-  totalRounds: number;
-  calculatedAt: Date;
-}
-```
-
-### New Calculation Function
-
-`calculatePerformanceDrivers(shots, tiger5Metrics, mentalMetrics, scoringMetrics, drivingMetrics, approachMetrics, shortGameMetrics, puttingMetrics)`
-
-This function will:
-1. Aggregate all candidate drivers from all segments
-2. Calculate SG impact for each
-3. Count Tiger 5 root causes for each
-4. Apply weighted scoring formula
-5. Sort and select top 5
-6. Generate narratives
-7. Assign ratings
-
----
+- **S3 — Failure Rate (15+ Feet)**: <10% strong, 10-20% monitor, 20%+ active driver
 
 ## Implementation Steps
 
-### Step 1: Add Types
-- Add `PerformanceDriver`, `PerformanceDriverRating`, `PerformanceDriversResult` to `src/types/golf.ts`
+### Step 1: Add TypeScript Types (src/types/golf.ts)
+Create new interfaces:
+- `PlayerPathMetrics` - Main container
+- `DrivingDriver` (D1-D5)
+- `ApproachDriver` (A1-A4)
+- `PuttingDriver` (L1-L3, M1-M2)
+- `ShortGameDriver` (S1-S3)
+- `PlayerPathSegment` enum
 
-### Step 2: Create Calculation Function
-- Add `calculatePerformanceDrivers()` to `src/utils/calculations.ts`
-- Implement candidate driver aggregation from all segment metrics
-- Implement weighted scoring algorithm
-- Implement narrative generation
-- Implement rating assignment
+### Step 2: Create Calculation Functions (src/utils/playerPathCalculations.ts)
+New file with functions for each driver:
+- `calculateDrivingDrivers()`
+- `calculateApproachDrivers()`
+- `calculatePuttingDrivers()`
+- `calculateShortGameDrivers()`
+- `calculateAllPlayerPathMetrics()`
 
-### Step 3: Add to Data Hook
-- Add `performanceDrivers` to `useGolfData` hook
-- Pass all required metrics to calculation function
+### Step 3: Update useGolfData Hook
+Add `playerPathMetrics` to the hook's return value
 
-### Step 4: Create Components
-- Create `PlayerPathTab.tsx` main container
-- Create `PerformanceDriverCard.tsx` for individual cards
-- Use existing styling tokens and patterns
+### Step 4: Update PlayerPathView Component
+Redesign UI to show:
+- Segment tabs (Driving, Approach, Putting, Short Game)
+- Driver cards with severity indicators
+- Charts and visualizations for each driver
+- Detailed breakdowns
 
-### Step 5: Integrate with App
-- Add PlayerPath tab to App.tsx routing
-- Ensure proper filter context is available
+## Architecture Diagram
 
----
+```mermaid
+flowchart TD
+    A[Raw Shots Data] --> B[processShots]
+    B --> C[ProcessedShot Data]
+    C --> D[PlayerPath Calculations]
+    D --> D1[Driving Drivers D1-D5]
+    D --> D2[Approach Drivers A1-A4]
+    D --> D3[Putting Drivers L1-L3 M1-M2]
+    D --> D4[Short Game Drivers S1-S3]
+    D1 --> E[PlayerPathMetrics]
+    D2 --> E
+    D3 --> E
+    D4 --> E
+    E --> F[useGolfData Hook]
+    F --> G[PlayerPathView UI]
+```
 
-## Visual Design Guidelines
+## UI Layout Concept
 
-### Card Layout
-- Use consistent card styling (existing patterns from other tabs)
-- Rating badges should use color coding:
-  - Critical: Red (#DC2626)
-  - Significant: Orange (#EA580C)
-  - Moderate: Yellow (#CA8A04)
-
-### Segment Icons
-- Driving: 🎯 or car icon
-- Approach: 🎯 or target icon  
-- Short Game: 🏌️ or flag icon
-- Putting: ⛳ or golf ball icon
-- Mental: 🧠 or brain icon
-- Scoring: 📊 or chart icon
-
-### Spacing
-- Cards in a 2-column grid on desktop, 1-column on mobile
-- Consistent padding (16px or 24px)
-- Clear visual hierarchy with section headers
-
----
-
-## Acceptance Criteria
-
-1. ✅ Tab appears in navigation as "Player Path"
-2. ✅ Algorithm correctly identifies top 5 drivers using weighted scoring
-3. ✅ Each card shows: Segment, Metric Name, Narrative, SG/rd, T5 Root Causes, Rating
-4. ✅ Rating colors match severity (Critical=Red, Significant=Orange, Moderate=Yellow)
-5. ✅ Narratives are dynamic and contextually accurate
-6. ✅ Cards are responsive (2-col desktop, 1-col mobile)
-7. ✅ Data updates when filters change
-8. ✅ Works with existing benchmark system
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Player Path                                              │
+├─────────────────────────────────────────────────────────────┤
+│  [Driving] [Approach] [Putting] [Short Game]              │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │ D1 - Tee Shot Penalty Rate                    [HIGH] │  │
+│  │ Value: 8.2%  |  Threshold: >5% moderate, >10% severe │  │
+│  │ Total Penalty Shots: 12  |  SG Impact: -2.4          │  │
+│  └──────────────────────────────────────────────────────┘  │
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │ D4 - Rough Penalty on Long Second Shots        [MOD]  │  │
+│  │ Fairway Hit Rate: 45%  |  Avg 2nd Shot Dist: 162y    │  │
+│  └──────────────────────────────────────────────────────┘  │
+│                                                             │
+│  ... more drivers ...                                       │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```

@@ -668,3 +668,311 @@ export interface PerformanceDriversResult {
   totalRounds: number;
   calculatedAt: Date;
 }
+
+// ============================================
+// PlayerPath Types - New Comprehensive Framework
+// ============================================
+
+// PlayerPath segment types
+export type PlayerPathSegment = 'Driving' | 'Approach' | 'Putting' | 'Short Game';
+
+// Severity rating for performance drivers
+export type DriverSeverity = 'Strong' | 'Moderate' | 'Significant' | 'Critical';
+
+// Single Performance Driver (for the new framework)
+export interface PlayerPathDriver {
+  id: string;
+  segment: PlayerPathSegment;
+  code: string;  // e.g., "D1", "A2", "L1", "M1", "S1"
+  name: string;
+  description: string;
+  
+  // Metrics
+  value: number;
+  threshold: number;
+  severity: DriverSeverity;
+  
+  // Context
+  sampleSize: number;
+  totalStrokesGained: number;  // Total SG impact (can be negative)
+  sgPerRound: number;  // SG impact per round
+  
+  // Additional context for some drivers
+  comparisonValue?: number;  // For comparing to benchmark
+  breakdown?: {
+    label: string;
+    value: number;
+    threshold: number;
+  }[];
+}
+
+// ============================================
+// Driving Drivers (D1-D5)
+// ============================================
+
+export interface DrivingDriverD1 {
+  code: 'D1';
+  name: 'Tee Shot Penalty Rate';
+  description: 'Percentage of tee shots resulting in penalties';
+  value: number;  // Percentage
+  totalTeeShots: number;
+  penaltyCount: number;
+  severity: DriverSeverity;
+  sgImpact: number;
+}
+
+export interface DrivingDriverD2 {
+  code: 'D2';
+  name: 'Distance Deficiency';
+  description: 'Percentage of fairway tee shots with negative SG';
+  value: number;  // Percentage
+  fairwayTeeShots: number;
+  negativeSGBucket: number;
+  severity: DriverSeverity;
+  sgImpact: number;
+}
+
+export interface DrivingDriverD3 {
+  code: 'D3';
+  name: 'Severe Misses';
+  description: 'Tee shots ending in recovery (severe directional error)';
+  value: number;  // Percentage
+  totalTeeShots: number;
+  recoveryCount: number;
+  severity: DriverSeverity;
+  sgImpact: number;
+}
+
+export interface DrivingDriverD4 {
+  code: 'D4';
+  name: 'Rough Penalty on Long Second Shots';
+  description: 'Low FW% + long 2nd shots from rough';
+  fwHitRate: number;
+  avgSecondShotDistance: number;
+  severity: DriverSeverity;
+  sgImpact: number;
+}
+
+export interface DrivingDriverD5 {
+  code: 'D5';
+  name: 'Driver Value Gap';
+  description: 'SG comparison: driver vs non-driver tee shots';
+  driverSG: number;
+  nonDriverSG: number;
+  value: number;  // Difference
+  severity: DriverSeverity;
+  sgImpact: number;
+}
+
+export type DrivingDriver = DrivingDriverD1 | DrivingDriverD2 | DrivingDriverD3 | DrivingDriverD4 | DrivingDriverD5;
+
+// ============================================
+// Approach Drivers (A1-A4)
+// ============================================
+
+// Distance band for approach metrics
+export interface ApproachDistanceBand {
+  label: string;  // e.g., "50-100y"
+  minDistance: number;
+  maxDistance: number;
+  totalShots: number;
+  greenHits: number;
+  girRate: number;
+  avgProximity: number;  // In feet
+  proximityTarget: number;
+  proximityRate: number;  // % within target
+  sgTotal: number;
+}
+
+export interface ApproachDriverA1 {
+  code: 'A1';
+  name: 'GIR Rate by Distance Band';
+  description: 'Green in Regulation rate by distance band';
+  bands: ApproachDistanceBand[];
+  severity: DriverSeverity;
+  worstBand?: string;
+}
+
+export interface ApproachDriverA2 {
+  code: 'A2';
+  name: 'Proximity Failure in Scoring Zones';
+  description: 'Percentage of shots missing proximity target';
+  bands: ApproachDistanceBand[];
+  severity: DriverSeverity;
+  worstBand?: string;
+}
+
+export interface ApproachDriverA3 {
+  code: 'A3';
+  name: 'Lie-Based Performance Gap';
+  description: 'SG difference: rough vs fairway by distance band';
+  bands: {
+    label: string;
+    fairwaySG: number;
+    roughSG: number;
+    gap: number;
+    threshold: number;
+    flagged: boolean;
+  }[];
+  severity: DriverSeverity;
+}
+
+export interface ApproachDriverA4 {
+  code: 'A4';
+  name: 'Distance Band Black Hole';
+  description: 'Single distance band with >40% of approach SG losses';
+  bands: ApproachDistanceBand[];
+  worstBand: string;
+  worstBandSGLoss: number;
+  totalSGLoss: number;
+  percentageOfLosses: number;
+  severity: DriverSeverity;
+}
+
+export type ApproachDriver = ApproachDriverA1 | ApproachDriverA2 | ApproachDriverA3 | ApproachDriverA4;
+
+// ============================================
+// Putting Drivers (L1-L3, M1-M2)
+// ============================================
+
+// Lag putting metrics
+export interface LagPuttingDriver {
+  // L1 - Lag Proximity Rate
+  poorLagRate: number;  // % of first putts >10ft finishing >5ft
+  totalLagPutts: number;
+  
+  // L2 - Speed Dispersion Band
+  speedDispersionBand: number;  // Max long + Max short in feet
+  
+  // L3 - Centering Rate
+  longPct: number;  // % left long
+  shortPct: number;  // % left short
+  centeringRate: string;  // Description of centering
+  
+  severity: DriverSeverity;
+  sgImpact: number;
+}
+
+export interface MakeablePuttBucket {
+  label: string;  // e.g., "0-4ft"
+  minDistance: number;
+  maxDistance: number;
+  totalPutts: number;
+  madePutts: number;
+  makePct: number;
+  sgTotal: number;
+  avgSG: number;
+}
+
+export interface PuttingDriverM1 {
+  code: 'M1';
+  name: 'SG by Distance Bucket';
+  description: 'SG performance by makeable putt distance bucket';
+  buckets: MakeablePuttBucket[];
+  minSampleSize: number;
+  flaggedBuckets: string[];  // Bucket labels that fail threshold
+  severity: DriverSeverity;
+}
+
+export interface PuttingDriverM2 {
+  code: 'M2';
+  name: 'Primary Loss Bucket';
+  description: 'Distance bucket with largest negative total SG';
+  buckets: MakeablePuttBucket[];
+  primaryLossBucket: string;
+  primaryLossSG: number;
+  severity: DriverSeverity;
+}
+
+export type PuttingDriver = LagPuttingDriver | PuttingDriverM1 | PuttingDriverM2;
+
+// ============================================
+// Short Game Drivers (S1-S3)
+// ============================================
+
+export interface ShortGameLieMetric {
+  lie: string;  // Fairway, Rough, Sand
+  totalShots: number;
+  inside8Feet: number;
+  proximityRate: number;
+}
+
+export interface ShortGameDriverS1 {
+  code: 'S1';
+  name: 'Proximity Rate Inside 8 Feet by Lie';
+  description: 'Percentage of short game shots finishing inside 8 feet, by lie type';
+  lieMetrics: ShortGameLieMetric[];
+  severity: DriverSeverity;
+  worstLie?: string;
+}
+
+export interface ShortGameDistanceMetric {
+  label: string;  // e.g., "0-20y"
+  minDistance: number;
+  maxDistance: number;
+  totalShots: number;
+  inside8Feet: number;
+  proximityRate: number;
+}
+
+export interface ShortGameDriverS2 {
+  code: 'S2';
+  name: 'Proximity Rate Inside 8 Feet by Distance Band';
+  description: 'Percentage finishing inside 8 feet, by distance band';
+  distanceMetrics: ShortGameDistanceMetric[];
+  severity: DriverSeverity;
+  worstDistance?: string;
+}
+
+export interface ShortGameDriverS3 {
+  code: 'S3';
+  name: 'Failure Rate (15+ Feet)';
+  description: 'Percentage of short game shots finishing >15 feet from hole';
+  value: number;  // Percentage
+  totalShortGameShots: number;
+  failures: number;
+  severity: DriverSeverity;
+  sgImpact: number;
+}
+
+export type ShortGameDriver = ShortGameDriverS1 | ShortGameDriverS2 | ShortGameDriverS3;
+
+// ============================================
+// Complete PlayerPath Metrics
+// ============================================
+
+export interface PlayerPathMetrics {
+  // Segment headers
+  driving: {
+    d1: DrivingDriverD1 | null;
+    d2: DrivingDriverD2 | null;
+    d3: DrivingDriverD3 | null;
+    d4: DrivingDriverD4 | null;
+    d5: DrivingDriverD5 | null;
+  };
+  approach: {
+    a1: ApproachDriverA1 | null;
+    a2: ApproachDriverA2 | null;
+    a3: ApproachDriverA3 | null;
+    a4: ApproachDriverA4 | null;
+  };
+  putting: {
+    lag: LagPuttingDriver | null;
+    m1: PuttingDriverM1 | null;
+    m2: PuttingDriverM2 | null;
+  };
+  shortGame: {
+    s1: ShortGameDriverS1 | null;
+    s2: ShortGameDriverS2 | null;
+    s3: ShortGameDriverS3 | null;
+  };
+  
+  // Summary
+  totalRounds: number;
+  calculatedAt: Date;
+  
+  // Aggregated flags for quick summary
+  criticalDrivers: string[];  // Codes of critical drivers
+  significantDrivers: string[];  // Codes of significant drivers
+  moderateDrivers: string[];  // Codes of moderate drivers
+}
