@@ -116,19 +116,39 @@ function getPGAExpectedStrokes(distance: number, location: string): number {
   return lower[col] + ratio * (upper[col] - lower[col]);
 }
 
+// Distance-varying adjustment for Green/putting location.
+// A flat adjustment cancels in the SG formula (SG = expectedStart - 1 - expectedEnd)
+// because both start and end are on the Green. By making the adjustment
+// distance-dependent, adj_start ≠ adj_end for most putts, preserving the
+// benchmark signal in SG Putting.
+// scale: 1.0 = elite college, 2.0 = competitive am
+function getGreenPuttAdjustment(distance: number, scale: number): number {
+  if (distance <= 0) return 0;           // made putt (in hole) — no adjustment
+  if (distance <= 2) return 0.03 * scale;
+  if (distance <= 4) return 0.08 * scale;
+  if (distance <= 6) return 0.12 * scale;
+  if (distance <= 10) return 0.15 * scale;
+  if (distance <= 15) return 0.17 * scale;
+  if (distance <= 20) return 0.18 * scale;
+  if (distance <= 30) return 0.20 * scale;
+  return 0.22 * scale;
+}
+
 // Get expected strokes for Elite College benchmark (+3)
 function getEliteCollegeExpectedStrokes(distance: number, location: string): number {
-  // Add approximately 0.2-0.4 strokes to PGA Tour for elite college
   const pgaValue = getPGAExpectedStrokes(distance, location);
-  const adjustment = location === 'Green' ? 0.15 : 0.25;
+  const adjustment = location === 'Green'
+    ? getGreenPuttAdjustment(distance, 1.0)
+    : 0.25;
   return pgaValue + adjustment;
 }
 
 // Get expected strokes for Competitive Am (Scratch)
 function getCompetitiveAmExpectedStrokes(distance: number, location: string): number {
-  // Add approximately 0.4-0.6 strokes to PGA Tour for competitive am
   const pgaValue = getPGAExpectedStrokes(distance, location);
-  const adjustment = location === 'Green' ? 0.30 : 0.50;
+  const adjustment = location === 'Green'
+    ? getGreenPuttAdjustment(distance, 2.0)
+    : 0.50;
   return pgaValue + adjustment;
 }
 
