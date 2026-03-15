@@ -1,3 +1,5 @@
+import ContactForm from '@/components/ContactForm';
+
 export const metadata = {
   title: 'Contact',
   description: 'Get in touch with theory.golf.',
@@ -5,8 +7,8 @@ export const metadata = {
 
 export default function ContactPage() {
   return (
-    <div className="page-hero">
-      <div className="page-hero-inner">
+    <div className="page-hero" style={{ alignItems: 'flex-start', paddingTop: '80px' }}>
+      <div className="page-hero-inner" style={{ maxWidth: '680px' }}>
         <p className="eyebrow" style={{ marginBottom: '20px' }}>
           Get in touch
         </p>
@@ -20,7 +22,9 @@ export default function ContactPage() {
           love to walk you through what the platform can do for your team.
         </p>
 
-        <span className="coming-soon">Contact Form — Coming Soon</span>
+        <div style={{ marginTop: '48px' }}>
+          <ContactForm />
+        </div>
       </div>
     </div>
   );

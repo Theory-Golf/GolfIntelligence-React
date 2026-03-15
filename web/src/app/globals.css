@@ -93,6 +93,127 @@
   line-height: 1.6;
 }
 
+/* ── CONTACT FORM ─────────────────────────────────────────── */
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.contact-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 560px) {
+  .contact-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.contact-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.contact-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.contact-input {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 14px;
+  outline: none;
+  transition: border-color var(--transition-fast);
+  width: 100%;
+  border-radius: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.contact-input::placeholder {
+  color: var(--color-muted);
+  opacity: 0.5;
+}
+
+.contact-input:focus {
+  border-color: var(--color-accent);
+}
+
+.contact-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.contact-textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.contact-submit {
+  align-self: flex-start;
+  background: var(--color-accent);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border: none;
+  padding: 12px 28px;
+  cursor: pointer;
+  transition: background var(--transition-fast), opacity var(--transition-fast);
+}
+
+.contact-submit:hover {
+  background: var(--color-accent-hover);
+}
+
+.contact-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.contact-error {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--color-accent);
+  margin: 0;
+}
+
+.contact-success {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.contact-success-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin: 0;
+}
+
+.contact-success-body {
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--color-muted);
+  line-height: 1.6;
+  margin: 0 0 8px;
+}
+
 /* ── COMING SOON BADGE ────────────────────────────────────── */
 .coming-soon {
   display: inline-block;
